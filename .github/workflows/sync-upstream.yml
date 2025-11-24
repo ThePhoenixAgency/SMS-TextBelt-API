@@ -1,0 +1,25 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Chaque dimanche à 2h du matin
+  workflow_dispatch:  # Permet de lancer manuellement si besoin
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sync upstream changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/typpo/textbelt.git
+          git fetch upstream
+          git merge upstream/master --no-edit --allow-unrelated-histories || true
+          git push origin master
