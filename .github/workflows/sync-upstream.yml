@@ -2,8 +2,8 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: '0 2 * * 0'  # Chaque dimanche à 2h du matin
-  workflow_dispatch:  # Permet de lancer manuellement si besoin
+    - cron: '0 3 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -15,11 +15,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Sync upstream changes
+      - name: Sync with upstream using rebase
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add upstream https://github.com/typpo/textbelt.git
+          
+          git remote add upstream https://github.com/typpo/textbelt.git 2>/dev/null || true
           git fetch upstream
-          git merge upstream/master --no-edit --allow-unrelated-histories || true
-          git push origin master
+          
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse upstream/master)
+          
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "Already up to date"
+            exit 0
+          fi
+          
+          git rebase upstream/master || {
+            echo "Rebase failed - manual intervention required"
+            git rebase --abort
+            exit 1
+          }
+          
+          git push origin master --force-with-lease
